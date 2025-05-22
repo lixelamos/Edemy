@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Footer from './student/Footer';
 
 const ContactForm = () => {
-  const [state, handleSubmit] = useForm("xyzkbwqk");
+  const [state, handleSubmit] = useForm("xjvqbajz");
   const navigate = useNavigate();
 
   // useEffect always runs, even if the success message is rendered.
@@ -28,7 +28,7 @@ const ContactForm = () => {
         <form
           onSubmit={handleSubmit}
           method="POST"
-          action="https://formspree.io/f/xyzkbwqk"
+          action="https://formspree.io/f/xjvqbajz"
           className="max-w-lg mx-auto p-6 bg-white rounded-lg shadow-lg space-y-6"
         >
           {/* Email Field */}

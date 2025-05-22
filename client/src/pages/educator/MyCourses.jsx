@@ -14,7 +14,7 @@ const MyCourses = () => {
 
 
   const fetchEducatorCourses = async()=>{
-    // setCourses(allCourses)
+     setCourses(allCourses)
     try {
       const token = await getToken();
       const {data} = await axios.get(backendUrl + '/api/educator/courses', { headers: { Authorization: `Bearer ${token}` } })
@@ -62,7 +62,7 @@ const MyCourses = () => {
                  
                     <img 
                     src={course.courseThumbnail} 
-                    alt="CoureImage"
+                    alt="CourseImage"
                     className="w-16"
                      />
                      <span className="truncate hidden md:block">{course.courseTitle}</span>

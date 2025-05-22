@@ -30,8 +30,8 @@ const CourseDetails = () => {
 	} = useContext(AppContext);
 
 	const fetcheCourseData = async () => {
-		// const findCourse = allCourses.find((course) => course._id === id);
-		// setCourseData(findCourse);
+		const findCourse = allCourses.find((course) => course._id === id);
+		 setCourseData(findCourse);
 
 		try {
 			const { data } = await axios.get(backendUrl + "/api/course/" + id);
@@ -175,13 +175,13 @@ const CourseDetails = () => {
 										<ul className="list-disc md:pl-10 pl-4 pr-4 py-2 text-gray-600 border-t border-gray-300">
 											{chapter.chapterContent.map((lecture, i) => (
 												<li key={i} className="flex items-start gap-2 py-1">
-													{/* <img onClick={()=> setPlayerData({
+													{ <img onClick={()=> setPlayerData({
                                   videoId: lecture.lectureUrl.split('/').pop()
                                 })}
 														className="w-4 h-4 mt-1 cursor-pointer"
 														src={assets.play_icon}
 														alt="play_icon"
-													/> */}
+													/> }
 
 													{lecture.isPreviewFree ? (
 														<img
@@ -312,7 +312,7 @@ const CourseDetails = () => {
 						</div>
 
 						<div
-							// onClick={enrollCourse}
+							 onClick={enrollCourse}
 							
 						>
 							{isAlreadyEnrolled
