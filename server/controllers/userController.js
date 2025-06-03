@@ -5,19 +5,20 @@ import User from "../models/User.js"
 import { CourseProgress } from "../models/CourseProgress.js"
 
 // Get users data
-export const getUserData = async(req,res)=>{
+export const getUserData = async (req, res) => {
     try {
-        const userId = req.auth.userId
-        const user = await User.findById(userId)
-        if(!user){
-            res.json({success: false, message:"User not found!"})
+        const userId = req.auth.userId;
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found!" });
         }
 
-        res.json({success: true, user});
+        res.json({ success: true, user });
     } catch (error) {
-        res.json({success: false, message:error.message})
+        res.status(500).json({ success: false, message: error.message });
     }
-}
+};
+
 
 // User enrolled course with lecture link
 

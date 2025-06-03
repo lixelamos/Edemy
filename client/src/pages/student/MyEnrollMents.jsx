@@ -8,7 +8,7 @@ import { data } from "react-router-dom";
 
 
 
-const MyEnrollMents = () => {
+const MyEnrollments = () => {
 	const {
 		navigate,
 		enrolledCourses,
@@ -67,7 +67,7 @@ const MyEnrollMents = () => {
 		<>
 		
 			<div className="md:px-36 px-8 pt-10">
-				<h1 className="text-2xl font-semibold">My EnrollMents</h1>
+				<h1 className="text-2xl font-semibold">My Enrollments</h1>
 				<table className="md:table-auto table-fixed w-full overflow-hidden border mt-10">
 					<thead className="text-gray-900 border-b border-gray-500/20  text-sm text-left max-sm:hidden">
 						<tr>
@@ -133,4 +133,4 @@ const MyEnrollMents = () => {
 	);
 };
 
-export default MyEnrollMents;
+export default MyEnrollments;

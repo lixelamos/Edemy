@@ -7,7 +7,7 @@ import Logger from '../../components/Logger'
 
 const MyCourses = () => {
 
-  const {currency, backendUrl, isEducator, getToken} = useContext(AppContext)
+  const {currency,allCourses, backendUrl, isEducator, getToken} = useContext(AppContext)
   const [courses, setCourses] = useState(null)
 
 

@@ -18,13 +18,13 @@ export const AppContextProvider = (props)=>{
     const {user} = useUser()
 
     const [allCourses, setAllCourses] = useState([])
-    const [isEducator, setIsEducator] = useState(false)
+    const [isEducator, setIsEducator] = useState(true)
     const [enrolledCourses, setEnrolledCourses] = useState([])
     const [userData, setUserData] = useState(null)
 
     // fetch all courses 
     const fetchAllCourses = async ()=>{
-        // setAllCourses(dummyCourses)
+         setAllCourses(dummyCourses)
         try {
             const {data} = await axios.get(backendUrl + '/api/course/all');
             if(data.success)
