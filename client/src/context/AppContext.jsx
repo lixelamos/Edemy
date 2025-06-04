@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import { dummyCourses } from "../assets/assets";
-import { data, useNavigate } from "react-router-dom";
+import {  data,useNavigate } from "react-router-dom";
 import humanizeDuration from "humanize-duration"
 import {useAuth, useUser} from '@clerk/clerk-react'
 import axios from 'axios'
@@ -26,7 +26,7 @@ export const AppContextProvider = (props)=>{
     const fetchAllCourses = async ()=>{
          setAllCourses(dummyCourses)
         try {
-            const {data} = await axios.get(backendUrl + '/api/course/all');
+            const {data} = await axios.get(backendUrl+'/api/course/all');
             if(data.success)
             {
                 setAllCourses(data.courses)
@@ -49,7 +49,7 @@ export const AppContextProvider = (props)=>{
         try {
             const token = await getToken();
 
-            const {data} = await axios.get(backendUrl + '/api/user/data' , {headers: {Authorization: `Bearer ${token}`}})
+            const {data} = await axios.get(backendUrl +'/api/user/data' , {headers: {Authorization: `Bearer ${token}`}})
         
             if(data.success){
                 setUserData(data.user)
@@ -102,29 +102,6 @@ export const AppContextProvider = (props)=>{
         return totalLectures;
     }
 
-    // Fetch user enrolled courses
-
-    // const fetchUserEnrolledCourses = async()=>{
-    //     // setEnrolledCourses(dummyCourses)
-    //    try {
-    //     const token = await getToken();
-
-    //     const data = await axios.get(backendUrl + '/api/user/enrolled-courses', {headers: {Authorization: `Bearer ${token}`}})
-        
-    //     console.log("Data",data);
-    //     if(data){
-    //         setEnrolledCourses(data.enrolledCourses.reverse());
-    //         // console.log("enroll", enrolledCourses);
-    //         // console.log("setenroll", enrolledCourses);
-            
-    //     }else{
-    //         toast.error(data.message)
-    //     }
-    //    } catch (error) {
-    //     toast.error(error.message)
-    //    }
-    // }
-
 
     const fetchUserEnrolledCourses = async () => {
         try {
@@ -150,20 +127,15 @@ export const AppContextProvider = (props)=>{
         fetchAllCourses()
     },[])
 
-    useEffect(()=>{
 
-    },[])
-
-
-    // const logToken = async ()=>{
-    //     console.log(await getToken());
-        
-    // }
+   const logToken=async()=>{
+    console.log(await getToken());
+   }
 
     useEffect(()=>{
         if(user){
             fetchUserData()
-            // logToken()
+            logToken()
             fetchUserEnrolledCourses()
         }
     },[user])
