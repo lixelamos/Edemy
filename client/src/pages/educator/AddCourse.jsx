@@ -85,8 +85,6 @@ const AddCourse = () => {
             lectureOrder: chapter.chapterContent.length > 0 ? chapter.chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
             lectureId: uniqid()
           };
-          // console.log("LectureId" , lectureId);
-          console.log("Lecture" , newLecture);
           chapter.chapterContent.push(newLecture);
         }
         return chapter;
@@ -142,7 +140,6 @@ const AddCourse = () => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    console.log("data", data);
 
     if (data.success) {
       toast.success(data.message);

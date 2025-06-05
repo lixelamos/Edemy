@@ -7,12 +7,14 @@ import { CourseProgress } from "../models/CourseProgress.js"
 // Get users data
 export const getUserData = async (req, res) => {
     try {
-        const userId = req.auth.userId;
+        const userId = req.auth?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found!" });
         }
-
         res.json({ success: true, user });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -150,10 +152,9 @@ export const addUserRating = async (req,res)=>{
         // console.log("rating", rating);
         
 
-        if(!courseId || !userId || !rating || rating < 1 || rating > 5)
-        {
-            res.json({success: false, message:"Invalid details"})
-        }
+        if(!courseId || !userId || !rating || rating < 1 || rating > 5) {
+    return res.json({success: false, message:"Invalid details"});
+}
 
         const course = await Course.findById(courseId)
         if(!course){
