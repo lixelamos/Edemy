@@ -22,11 +22,11 @@ const CoursesList = () => {
 				discount: course.discount
 			})));
 
-			if (input && typeof input === 'string') {
+			if (input && typeof input === 'string' && input.trim() !== '') {
 				const searchTerm = input.toLowerCase();
 				setFilteredcourse(
 					tempCourses.filter(
-						item => item.courseTitle && typeof item.courseTitle === 'string' && 
+						item => item && item.courseTitle && typeof item.courseTitle === 'string' && 
 							item.courseTitle.toLowerCase().includes(searchTerm)
 					)
 				);

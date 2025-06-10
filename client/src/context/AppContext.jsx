@@ -9,14 +9,16 @@ export const AppContext = createContext();
 
 export const AppContextProvider = (props) => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
-    const currency = import.meta.env.VITE_CURRENCY || '$';
+    const currency = typeof import.meta.env.VITE_CURRENCY === 'string' ? 
+        import.meta.env.VITE_CURRENCY.toLowerCase() : 
+        'usd';
     const navigate = useNavigate();
 
     const { getToken, isLoaded: isAuthLoaded } = useAuth();
     const { user, isLoaded: isUserLoaded } = useUser();
 
     const [allCourses, setAllCourses] = useState([]);
-    const [isEducator, setIsEducator] = useState(true);
+    const [isEducator, setIsEducator] = useState(false);
     const [enrolledCourses, setEnrolledCourses] = useState([]);
     const [userData, setUserData] = useState(null);
 
@@ -159,7 +161,7 @@ export const AppContextProvider = (props) => {
     }, [isUserLoaded, isAuthLoaded, user]);
 
     const value = {
-        currency,
+        currency: currency || 'usd',
         allCourses: allCourses || [],
         navigate,
         isEducator,

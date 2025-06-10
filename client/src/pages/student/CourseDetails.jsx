@@ -74,45 +74,117 @@ const CourseDetails = () => {
 
 	const enrollCourse = async () => {
 		try {
+			// Prevent multiple calls
 			if (!userData) {
-				return toast.warn("Login to Enroll!");
+				toast.warn("Login to Enroll!");
+				return;
 			}
 			if (isAlreadyEnrolled) {
-				return toast.warn("Already Enrolled");
+				toast.warn("Already Enrolled");
+				return;
 			}
 			if (!courseData || !courseData._id) {
-				return toast.error("Course data is not available");
+				toast.error("Course data is not available");
+				return;
 			}
 
 			const token = await getToken();
 			if (!token) {
-				return toast.error("Authentication failed");
+				toast.error("Authentication failed");
+				return;
 			}
 
-			console.log("Enrolling in course:", {
+			// Calculate price with discount
+			const price = courseData.coursePrice - (courseData.discount * courseData.coursePrice) / 100;
+
+			// Get currency code (default to 'usd' if not set)
+			const currencyCode = currency === '$' ? 'usd' : (currency || 'usd');
+
+			// Validate required data
+			if (typeof price !== 'number' || isNaN(price)) {
+				console.error("Invalid price calculated:", price);
+				toast.error("Invalid course price");
+				return;
+			}
+
+			if (typeof courseData.discount !== 'number' || isNaN(courseData.discount)) {
+				console.error("Invalid discount:", courseData.discount);
+				toast.error("Invalid course discount");
+				return;
+			}
+
+			const requestData = { 
 				courseId: courseData._id,
-				price: courseData.coursePrice,
-				discount: courseData.discount
+				price: price,
+				discount: courseData.discount,
+				currency: currencyCode
+			};
+
+			console.log("Sending enrollment request:", {
+				url: backendUrl + "/api/user/purchase",
+				data: requestData,
+				headers: {
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				}
 			});
 
 			const { data } = await axios.post(
 				backendUrl + "/api/user/purchase",
-				{ courseId: courseData._id },
-				{ headers: { Authorization: `Bearer ${token}` } }
+				requestData,
+				{ 
+					headers: { 
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json'
+					},
+					validateStatus: function (status) {
+						return status < 500; // Resolve only if the status code is less than 500
+					}
+				}
 			);
 
-			if (data.success) {
-				const { session_url } = data;
-				if (!session_url) {
-					return toast.error("Payment session URL not received");
-				}
-				window.location.replace(session_url);
-			} else {
-				toast.error(data.message || "Failed to initiate enrollment");
+			console.log("Enrollment response:", data);
+
+			if (!data) {
+				console.error("No data received in response");
+				toast.error("Invalid response from server");
+				return;
 			}
+
+			if (!data.success) {
+				console.error("Request was not successful:", data.message);
+				toast.error(data.message || "Failed to initiate enrollment");
+				return;
+			}
+
+			if (!data.session_url) {
+				console.error("No session URL in response:", data);
+				toast.error("Payment session URL not received");
+				return;
+			}
+
+			// If we get here, we have a valid session_url
+			window.location.replace(data.session_url);
 		} catch (error) {
 			console.error("Enrollment error:", error);
-			toast.error(error.response?.data?.message || error.message || "Failed to enroll in course");
+			if (error.response) {
+				// The request was made and the server responded with a status code
+				// that falls out of the range of 2xx
+				console.error("Error response:", {
+					data: error.response.data,
+					status: error.response.status,
+					headers: error.response.headers
+				});
+				toast.error(error.response.data?.message || "Failed to enroll in course");
+			} else if (error.request) {
+				// The request was made but no response was received
+				console.error("No response received:", error.request);
+				toast.error("No response from server. Please try again later.");
+			} else {
+				// Something happened in setting up the request that triggered an Error
+				console.error("Error setting up request:", error.message);
+				toast.error("Error setting up request. Please try again.");
+			}
 		}
 	};
 
@@ -360,17 +432,17 @@ const CourseDetails = () => {
 
 						<div className="flex gap-3 items-center pt-2">
 							<p className="text-gray-800 md:text-4xl text-2xl font-semibold">
-								{currency}{" "}
+								{currency || '$'}{" "}
 								{(
 									courseData.coursePrice -
 									(courseData.discount * courseData.coursePrice) / 100
 								).toFixed(2)}
 							</p>
 							<p className="md:text-lg text-gray-500 line-through">
-								{currency} {courseData.coursePrice}{" "}
+								{currency || '$'} {courseData.coursePrice}{" "}
 							</p>
 							<p className="md:text-lg text-gray-500">
-								{currency} {courseData.discount}% off{" "}
+								{currency || '$'} {courseData.discount}% off{" "}
 							</p>
 						</div>
 
@@ -395,17 +467,15 @@ const CourseDetails = () => {
 							</div>
 						</div>
 
-						<div
-							// onClick={enrollCourse}
-							
-						>
-							{isAlreadyEnrolled
+						<div>
+						{isAlreadyEnrolled
 								? <p className="md:mt-6 mt-4 w-full py-3 rounded text-center  bg-blue-600 text-white font-medium"> Already Enrolled </p>
 								: courseData.coursePrice -
 										(courseData.discount * courseData.coursePrice) / 100 ===
 								  0.00
-								? <p className="md:mt-6 mt-4 w-full py-3 rounded text-center  bg-blue-600 text-white font-medium"> Free </p>
-								: <button onClick={enrollCourse} className="md:mt-6 mt-4 w-full py-3 rounded text-center  bg-blue-600 text-white font-medium"> Enroll Now</button>}
+								? <p className="md:mt-6 mt-4 w-full py-3 rounded text-center  bg-blue-600 text-white font-medium"> Free </p> : (
+								<button onClick={enrollCourse} className="md:mt-6 mt-4 w-full py-3 rounded text-center  bg-blue-600 text-white font-medium"> Enroll Now</button>
+							)}
 						</div>
 
 						<div >

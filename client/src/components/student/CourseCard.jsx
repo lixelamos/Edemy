@@ -4,7 +4,7 @@ import { AppContext } from '../../context/AppContext'
 import { Link } from 'react-router-dom'
 
 const CourseCard = ({course}) => {
-  const {currency = '$', calculateRating} = useContext(AppContext)
+  const {currency, calculateRating} = useContext(AppContext)
   
   if (!course || !course._id) {
     console.error("Invalid course data:", course);
@@ -17,7 +17,7 @@ const CourseCard = ({course}) => {
       title: course.courseTitle,
       price: course.coursePrice,
       discount: course.discount,
-      currency
+      currency: currency || '$'
     });
     window.scrollTo(0, 0);
   }
@@ -29,6 +29,7 @@ const CourseCard = ({course}) => {
   const price = course.coursePrice - (course.discount * course.coursePrice / 100);
   const rating = calculateRating(course);
   const ratingsCount = Array.isArray(course.courseRatings) ? course.courseRatings.length : 0;
+  const displayCurrency = currency || '$';
 
   return (
     <Link to={'/course/' + course._id} onClick={handleClick} 
@@ -46,7 +47,7 @@ const CourseCard = ({course}) => {
           </div>
           <p className='text-gray-500'>{ratingsCount}</p>
         </div>
-        <p className='text-base font-semibold text-gray-800'>{currency} {price.toFixed(2)}</p>
+        <p className='text-base font-semibold text-gray-800'>{displayCurrency} {price.toFixed(2)}</p>
       </div>
     </Link>
   )

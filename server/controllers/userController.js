@@ -4,6 +4,11 @@ import { Purchase } from "../models/Purchase.js"
 import User from "../models/User.js"
 import { CourseProgress } from "../models/CourseProgress.js"
 
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2023-10-16'
+});
+
 // Get users data
 export const getUserData = async (req, res) => {
     try {
@@ -40,92 +45,175 @@ export const userEnrolledCourses = async (req,res)=>{
 
 // Purchase course
 
-export const purchaseCourse = async (req,res) => {
+export const purchaseCourse = async (req, res) => {
     try {
-        const {courseId} = req.body
-        const {origin} = req.headers
-        const userId = req.auth.userId;
-
-        console.log("Purchase request:", {
-            courseId,
-            origin,
-            userId,
-            currency: process.env.CURRENCY
+        // Log the entire request object
+        console.log("Full request object:", {
+            body: req.body,
+            headers: req.headers,
+            auth: req.auth,
+            params: req.params,
+            query: req.query
         });
 
+        // Ensure req.body exists and is an object
+        if (!req.body || typeof req.body !== 'object') {
+            console.error("Invalid request body:", req.body);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid request: missing or invalid body",
+            });
+        }
+
+        // Ensure req.auth exists
+        if (!req.auth || !req.auth.userId) {
+            console.error("No auth in request");
+            return res.status(401).json({
+                success: false,
+                message: "User not authenticated",
+            });
+        }
+
+        const { courseId, price, discount, currency: requestCurrency } = req.body;
+        const { origin } = req.headers;
+        const userId = req.auth.userId;
+
+        console.log("Extracted values:", {
+            courseId,
+            price,
+            discount,
+            requestCurrency,
+            origin,
+            userId,
+            currencyType: typeof requestCurrency
+        });
+
+        // Input validation
         if (!courseId || !origin || !userId) {
-            return res.json({success: false, message: "Missing required data"});
+            console.error("Missing required fields:", { courseId, origin, userId });
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields",
+            });
         }
 
-        const userData = await User.findById(userId)
-        const courseData = await Course.findById(courseId)
-
-        if(!userData || !courseData) {
-            console.log("Data not found:", { userData: !!userData, courseData: !!courseData });
-            return res.json({success: false, message: "Data Not Found"});
+        // Find user and course
+        const userData = await User.findById(userId);
+        if (!userData) {
+            console.error("User not found:", userId);
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
         }
 
+        const courseData = await Course.findById(courseId);
+        if (!courseData) {
+            console.error("Course not found:", courseId);
+            return res.status(404).json({
+                success: false,
+                message: "Course not found",
+            });
+        }
+
+        // Calculate final price
+        const finalPrice = price || (courseData.coursePrice - (courseData.discount * courseData.coursePrice) / 100);
+        
+        // Create purchase record
         const purchaseData = {
             courseId: courseData._id,
             userId,
-            amount: (courseData.coursePrice - courseData.discount * courseData.coursePrice / 100).toFixed(2),
-        }
+            amount: finalPrice.toFixed(2),
+        };
 
-        console.log("Creating purchase:", purchaseData);
-
+        console.log("Creating purchase record:", purchaseData);
         const newPurchase = await Purchase.create(purchaseData);
 
-        // stripe gateway initialize
-        if (!process.env.STRIPE_SECRET_KEY) {
-            console.error("Stripe secret key is missing");
-            return res.json({success: false, message: "Payment configuration error"});
-        }
-
-        const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)
-        const currency = (process.env.CURRENCY || 'usd').toLowerCase();
-        
-        // creating line items to for stripe
-        const line_items = [{
-            price_data:{
-                currency,
-                product_data:{
-                    name: courseData.courseTitle
-                },
-                unit_amount: Math.floor(parseFloat(newPurchase.amount)) * 100
-            },
-            quantity: 1
-        }]
-
-        console.log("Creating Stripe session with:", {
-            currency,
-            amount: newPurchase.amount,
-            courseTitle: courseData.courseTitle,
-            line_items
+        // Get currency from request or environment with fallback
+        console.log("Currency values:", {
+            requestCurrency,
+            envCurrency: process.env.CURRENCY,
+            defaultCurrency: 'usd'
         });
 
+        // Ensure we have a valid currency string
+        let currency = 'usd'; // Default value
+        if (requestCurrency && typeof requestCurrency === 'string' && requestCurrency.trim()) {
+            currency = requestCurrency.toLowerCase();
+        } else if (process.env.CURRENCY && typeof process.env.CURRENCY === 'string' && process.env.CURRENCY.trim()) {
+            currency = process.env.CURRENCY.toLowerCase();
+        }
+        
+        // Validate currency code
+        if (!['usd', 'eur', 'gbp', 'inr'].includes(currency)) {
+            console.error("Invalid currency code:", currency);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid currency code",
+            });
+        }
+
+        console.log("Using currency:", currency);
+
+        // Validate Stripe key
+        if (!process.env.STRIPE_SECRET_KEY) {
+            console.error("Stripe secret key is not configured");
+            return res.status(500).json({
+                success: false,
+                message: "Payment system is not configured",
+            });
+        }
+
+        // Initialize Stripe
+        const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+            apiVersion: '2023-10-16'
+        });
+
+        // Create Stripe session
         const session = await stripeInstance.checkout.sessions.create({
-            success_url: `${origin}/loading/my-enrollments`,
-            cancel_url: `${origin}/`,
-            line_items: line_items,
-            mode: 'payment',
+            payment_method_types: ["card"],
+            line_items: [{
+                price_data: {
+                    currency: currency,
+                    product_data: {
+                        name: courseData.courseTitle,
+                        description: courseData.courseDescription,
+                        images: [courseData.courseThumbnail],
+                    },
+                    unit_amount: Math.round(finalPrice * 100), // Convert to cents
+                },
+                quantity: 1,
+            }],
+            mode: "payment",
+            success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/cancel`,
+            client_reference_id: courseId,
+            customer_email: userData.email,
             metadata: {
                 purchaseId: newPurchase._id.toString()
             }
-        })
+        });
 
-        if (!session || !session.url) {
-            console.error("Failed to create Stripe session");
-            return res.json({success: false, message: "Failed to create payment session"});
-        }
+        console.log("Created Stripe session:", {
+            sessionId: session.id,
+            amount: finalPrice,
+            currency: currency,
+            courseTitle: courseData.courseTitle
+        });
 
-        console.log("Stripe session created successfully");
-        res.json({success: true, session_url: session.url})
-
+        res.status(200).json({
+            success: true,
+            session_url: session.url,
+        });
     } catch (error) {
         console.error("Error in purchaseCourse:", error);
-        res.json({success: false, message: error.message})
+        console.error("Error stack:", error.stack);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error processing payment",
+        });
     }
-}
+};
 
 // Update user Course progress
 
