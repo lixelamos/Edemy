@@ -1,6 +1,5 @@
 import { createContext, useEffect, useState } from "react";
-import { dummyCourses } from "../assets/assets";
-import { data,useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import humanizeDuration from "humanize-duration";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import axios from "axios";
@@ -10,29 +9,30 @@ export const AppContext = createContext();
 
 export const AppContextProvider = (props) => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
-    const currency = import.meta.env.VITE_CURRENCY;
+    const currency = import.meta.env.VITE_CURRENCY || '$';
     const navigate = useNavigate();
 
     const { getToken, isLoaded: isAuthLoaded } = useAuth();
     const { user, isLoaded: isUserLoaded } = useUser();
 
     const [allCourses, setAllCourses] = useState([]);
-    const [isEducator, setIsEducator] = useState(false);
+    const [isEducator, setIsEducator] = useState(true);
     const [enrolledCourses, setEnrolledCourses] = useState([]);
     const [userData, setUserData] = useState(null);
 
     // Fetch all courses
     const fetchAllCourses = async () => {
-        setAllCourses(dummyCourses);
         try {
             const { data } = await axios.get(backendUrl + "/api/course/all");
             if (data.success) {
                 setAllCourses(data.courses);
             } else {
                 toast.error(data.message);
+                setAllCourses([]);
             }
         } catch (error) {
             toast.error(error.message);
+            setAllCourses([]);
         }
     };
 

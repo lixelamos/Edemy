@@ -46,12 +46,23 @@ export const purchaseCourse = async (req,res) => {
         const {origin} = req.headers
         const userId = req.auth.userId;
 
-        const userData = await User.findById(userId)
+        console.log("Purchase request:", {
+            courseId,
+            origin,
+            userId,
+            currency: process.env.CURRENCY
+        });
 
+        if (!courseId || !origin || !userId) {
+            return res.json({success: false, message: "Missing required data"});
+        }
+
+        const userData = await User.findById(userId)
         const courseData = await Course.findById(courseId)
-        if(!userData || !courseData)
-        {
-            res.json({success: false, message: "Data Not Found"})
+
+        if(!userData || !courseData) {
+            console.log("Data not found:", { userData: !!userData, courseData: !!courseData });
+            return res.json({success: false, message: "Data Not Found"});
         }
 
         const purchaseData = {
@@ -60,11 +71,18 @@ export const purchaseCourse = async (req,res) => {
             amount: (courseData.coursePrice - courseData.discount * courseData.coursePrice / 100).toFixed(2),
         }
 
+        console.log("Creating purchase:", purchaseData);
+
         const newPurchase = await Purchase.create(purchaseData);
 
         // stripe gateway initialize
+        if (!process.env.STRIPE_SECRET_KEY) {
+            console.error("Stripe secret key is missing");
+            return res.json({success: false, message: "Payment configuration error"});
+        }
+
         const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)
-        const currency = process.env.CURRENCY.toLowerCase();
+        const currency = (process.env.CURRENCY || 'usd').toLowerCase();
         
         // creating line items to for stripe
         const line_items = [{
@@ -73,10 +91,17 @@ export const purchaseCourse = async (req,res) => {
                 product_data:{
                     name: courseData.courseTitle
                 },
-                unit_amount: Math.floor( newPurchase.amount ) * 100
+                unit_amount: Math.floor(parseFloat(newPurchase.amount)) * 100
             },
             quantity: 1
         }]
+
+        console.log("Creating Stripe session with:", {
+            currency,
+            amount: newPurchase.amount,
+            courseTitle: courseData.courseTitle,
+            line_items
+        });
 
         const session = await stripeInstance.checkout.sessions.create({
             success_url: `${origin}/loading/my-enrollments`,
@@ -88,11 +113,17 @@ export const purchaseCourse = async (req,res) => {
             }
         })
 
+        if (!session || !session.url) {
+            console.error("Failed to create Stripe session");
+            return res.json({success: false, message: "Failed to create payment session"});
+        }
+
+        console.log("Stripe session created successfully");
         res.json({success: true, session_url: session.url})
 
-
     } catch (error) {
-        res.json({success: false, message:error.message})
+        console.error("Error in purchaseCourse:", error);
+        res.json({success: false, message: error.message})
     }
 }
 

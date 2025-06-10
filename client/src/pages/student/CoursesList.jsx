@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AppContext } from "../../context/AppContext";
 import SearchBar from "../../components/student/SearchBar";
-import { data, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import CourseCard from "../../components/student/CourseCard";
 import { assets } from "../../assets/assets";
 import Footer from "../../components/student/Footer";
@@ -12,18 +12,32 @@ const CoursesList = () => {
 	const [filteredCourse, setFilteredcourse] = useState([]);
 
 	useEffect(() => {
+		console.log("All courses data:", allCourses);
 		if (allCourses && allCourses.length > 0) {
-      const tempCourses = allCourses.slice()
+			const tempCourses = allCourses.slice()
+			console.log("Available course IDs:", tempCourses.map(course => ({
+				id: course._id,
+				title: course.courseTitle,
+				price: course.coursePrice,
+				discount: course.discount
+			})));
 
-      input ? 
-        setFilteredcourse(
-          tempCourses.filter(
-            item => item.courseTitle.toLowerCase().includes(input.toLowerCase())
-          )
-        )
-      : setFilteredcourse(tempCourses);
-    }
+			if (input && typeof input === 'string') {
+				const searchTerm = input.toLowerCase();
+				setFilteredcourse(
+					tempCourses.filter(
+						item => item.courseTitle && typeof item.courseTitle === 'string' && 
+							item.courseTitle.toLowerCase().includes(searchTerm)
+					)
+				);
+			} else {
+				setFilteredcourse(tempCourses);
+			}
+		} else {
+			setFilteredcourse([]);
+		}
 	}, [allCourses, input]);
+
 	return (
 		<>
 			<div className="relative md:px-36 px-8 pt-20 text-left">
@@ -45,12 +59,10 @@ const CoursesList = () => {
 					<SearchBar data={input} />
 				</div>
 
-        {
-          input && <div className="inline-flex items-center gap-4 px-4 py-2 border mt-8 -mb-8 text-gray-600">
-            <p>{input}</p>
-            <img src={assets.cross_icon} alt="cross_icon"  className="cursor-pointer" onClick={()=> navigate('/course-list')}/>
-          </div>
-        }
+				{input && <div className="inline-flex items-center gap-4 px-4 py-2 border mt-8 -mb-8 text-gray-600">
+					<p>{input}</p>
+					<img src={assets.cross_icon} alt="cross_icon"  className="cursor-pointer" onClick={()=> navigate('/course-list')}/>
+				</div>}
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 my-16 gap-3 px-2 md:p-0">
 					{filteredCourse.map((course, index) => (
@@ -58,7 +70,7 @@ const CoursesList = () => {
 					))}
 				</div>
 			</div>
-      <Footer/>
+			<Footer/>
 		</>
 	);
 };

@@ -32,16 +32,15 @@ const App = () => {
       
       <Routes>
         <Route path='/' element={<Home/>} />
+        <Route path='/course/:id' element={<CourseDetails/>} />
         <Route path='/course-list' element={<CoursesList/>} />
         <Route path='/course-list/:input' element={<CoursesList/>} />
-        <Route path='/course/:id' element={<CourseDetails/>} />
         <Route path='/my-enrollments' element={<MyEnrollMents/>} />
         <Route path='/player/:courseId' element={<Player/>} />
         <Route path='/loading/:path' element={<Loading/>} />
 
         <Route path='/about' element={<About/>} />
         <Route path='/contact' element={<ContactForm/>} />
-
 
         <Route path='/educator' element={ <Educator />} >
             <Route path='/educator' element={<Dashboard />} />

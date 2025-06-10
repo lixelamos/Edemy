@@ -18,7 +18,6 @@ const CourseDetails = () => {
 	const [playerData, setPlayerData] = useState(null);
 
 	const {
-		allCourses,
 		currency,
 		calculateRating,
 		calculateChapterTime,
@@ -29,19 +28,47 @@ const CourseDetails = () => {
 		getToken,
 	} = useContext(AppContext);
 
-	const fetchCourseData = async () => {
-		 const findCourse = allCourses.find((course) => course._id === id);
-		setCourseData(findCourse);
-
+	const fetcheCourseData = async () => {
 		try {
+			console.log("Fetching course data for ID:", id);
 			const { data } = await axios.get(backendUrl + "/api/course/" + id);
-			if (data.success) {
+			console.log("Received data:", data);
+			
+			if (data.success && data.courseData) {
+				console.log("Setting course data:", data.courseData);
 				setCourseData(data.courseData);
+				
+				// Initialize openSections when course data is loaded
+				if (data.courseData.courseContent && Array.isArray(data.courseData.courseContent)) {
+					const initialOpenSections = {};
+					data.courseData.courseContent.forEach((_, index) => {
+						initialOpenSections[index] = false;
+					});
+					setOpenSections(initialOpenSections);
+				} else {
+					console.warn("Course content is not an array or is missing:", data.courseData.courseContent);
+					toast.error("Course content is not available");
+				}
 			} else {
-				toast.error(data.message);
+				console.error("Failed to fetch course data:", data);
+				toast.error(data.message || "Failed to fetch course data");
 			}
 		} catch (error) {
-			toast.error(error.message);
+			console.error("Error in fetchCourseData:", error);
+			if (error.response) {
+				// The request was made and the server responded with a status code
+				// that falls out of the range of 2xx
+				console.error("Error response:", error.response.data);
+				toast.error(error.response.data.message || "Error fetching course data");
+			} else if (error.request) {
+				// The request was made but no response was received
+				console.error("No response received:", error.request);
+				toast.error("No response from server. Please try again later.");
+			} else {
+				// Something happened in setting up the request that triggered an Error
+				console.error("Error setting up request:", error.message);
+				toast.error("Error setting up request. Please try again.");
+			}
 		}
 	};
 
@@ -53,8 +80,21 @@ const CourseDetails = () => {
 			if (isAlreadyEnrolled) {
 				return toast.warn("Already Enrolled");
 			}
+			if (!courseData || !courseData._id) {
+				return toast.error("Course data is not available");
+			}
 
 			const token = await getToken();
+			if (!token) {
+				return toast.error("Authentication failed");
+			}
+
+			console.log("Enrolling in course:", {
+				courseId: courseData._id,
+				price: courseData.coursePrice,
+				discount: courseData.discount
+			});
+
 			const { data } = await axios.post(
 				backendUrl + "/api/user/purchase",
 				{ courseId: courseData._id },
@@ -63,18 +103,24 @@ const CourseDetails = () => {
 
 			if (data.success) {
 				const { session_url } = data;
+				if (!session_url) {
+					return toast.error("Payment session URL not received");
+				}
 				window.location.replace(session_url);
 			} else {
-				toast.error(data.message);
+				toast.error(data.message || "Failed to initiate enrollment");
 			}
 		} catch (error) {
-			toast.error(error.message);
+			console.error("Enrollment error:", error);
+			toast.error(error.response?.data?.message || error.message || "Failed to enroll in course");
 		}
 	};
 
 	useEffect(() => {
-		fetchCourseData();
-	}, []);
+		if (id) {
+			fetcheCourseData();
+		}
+	}, [id]);
 
 	useEffect(() => {
 		if (userData && courseData) {
@@ -86,7 +132,41 @@ const CourseDetails = () => {
 		setOpenSections((prev) => ({ ...prev, [index]: !prev[index] }));
 	};
 
-	return courseData ? (
+	// Add debug log before render
+	console.log("Current courseData state:", courseData);
+
+	// More defensive render check
+	if (!courseData) {
+		console.log("No course data available, showing loading");
+		return <Loading />;
+	}
+
+	// Check if courseData has all required properties
+	if (!courseData.courseTitle || !courseData.courseDescription || !courseData.courseContent) {
+		console.log("Course data is missing required properties:", courseData);
+		return <Loading />;
+	}
+
+	if (!Array.isArray(courseData.courseContent)) {
+		console.log("Course content is not an array:", courseData.courseContent);
+		return <Loading />;
+	}
+
+	if (courseData.courseContent.length === 0) {
+		console.log("Course content is empty");
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<p className="text-gray-500">No course content available</p>
+			</div>
+		);
+	}
+
+	// Ensure courseRatings and enrolledStudents are arrays
+	const courseRatings = Array.isArray(courseData.courseRatings) ? courseData.courseRatings : [];
+	const enrolledStudents = Array.isArray(courseData.enrolledStudents) ? courseData.enrolledStudents : [];
+	const educator = courseData.educator || { name: "Unknown Educator" };
+
+	return (
 		<>
 			<div className="flex md:flex-row flex-col-reverse gap-10 relative items-start justify-between md:px-36 px-8 md:placeholder-teal-300 pt-20 text-left">
 				<div className="absolute top-0 left-0 w-full h-section-height -z-1 bg-gradient-to-b from-cyan-100/70"></div>
@@ -121,118 +201,122 @@ const CourseDetails = () => {
 							))}
 						</div>
 						<p className="text-blue-600">
-							({courseData.courseRatings.length}{" "}
-							{courseData.courseRatings.length > 1 ? "ratings" : "rating"})
+							({courseRatings.length}{" "}
+							{courseRatings.length > 1 ? "ratings" : "rating"})
 						</p>
 
 						<p>
-							{courseData.enrolledStudents.length}{" "}
-							{courseData.enrolledStudents.length > 1 ? "students" : "student"}
+							{enrolledStudents.length}{" "}
+							{enrolledStudents.length > 1 ? "students" : "student"}
 						</p>
 					</div>
 					<p className="text-sm">
 						Course by{" "}
 						<span className="text-blue-600 underline">
-							{courseData.educator.name}
+							{educator.name}
 						</span>
 					</p>
 
 					<div className="pt-8 text-gray-800">
 						<h2 className="text-xl font-semibold">Course Structure</h2>
 						<div className="pt-5">
-							{courseData.courseContent.map((chapter, index) => (
-								<div
-									className="border border-gray-300 bg-white mb-2 rounded"
-									key={index}
-								>
+							{Array.isArray(courseData.courseContent) ? (
+								courseData.courseContent.map((chapter, index) => (
 									<div
-										className="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
-										onClick={() => toggleSection(index)}
+										className="border border-gray-300 bg-white mb-2 rounded"
+										key={index}
 									>
-										<div className="flex items-center gap-2">
-											<img
-												className={`transform transition-transform ${
-													openSections[index] ? "rotate-180" : ""
-												}`}
-												src={assets.down_arrow_icon}
-												alt="down_arrow_icon"
-											/>
-											<p className="font-medium md:text-base text-sm">
-												{chapter.chapterTitle}
+										<div
+											className="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
+											onClick={() => toggleSection(index)}
+										>
+											<div className="flex items-center gap-2">
+												<img
+													className={`transform transition-transform ${
+														openSections[index] ? "rotate-180" : ""
+													}`}
+													src={assets.down_arrow_icon}
+													alt="down_arrow_icon"
+												/>
+												<p className="font-medium md:text-base text-sm">
+													{chapter.chapterTitle}
+												</p>
+											</div>
+											<p className="text-sm md:text-default">
+												{chapter.chapterContent.length} lectures -{" "}
+												{calculateChapterTime(chapter)}{" "}
 											</p>
 										</div>
-										<p className="text-sm md:text-default">
-											{chapter.chapterContent.length} lectures -{" "}
-											{calculateChapterTime(chapter)}{" "}
-										</p>
-									</div>
 
-									<div
-										className={`overflow-hidden transition-all duration-300 ${
-											openSections[index] ? "max-h-9g" : "max-h-0"
-										}`}
-									>
-										<ul className="list-disc md:pl-10 pl-4 pr-4 py-2 text-gray-600 border-t border-gray-300">
-											{chapter.chapterContent.map((lecture, i) => (
-												<li key={i} className="flex items-start gap-2 py-1">
-													{/* <img onClick={()=> setPlayerData({
-                                  videoId: lecture.lectureUrl.split('/').pop()
-                                })}
+										<div
+											className={`overflow-hidden transition-all duration-300 ${
+												openSections[index] ? "max-h-9g" : "max-h-0"
+											}`}
+										>
+											<ul className="list-disc md:pl-10 pl-4 pr-4 py-2 text-gray-600 border-t border-gray-300">
+												{chapter.chapterContent.map((lecture, i) => (
+													<li key={i} className="flex items-start gap-2 py-1">
+														{/* <img onClick={()=> setPlayerData({
+														videoId: lecture.lectureUrl.split('/').pop()
+														})}
 														className="w-4 h-4 mt-1 cursor-pointer"
 														src={assets.play_icon}
 														alt="play_icon"
-													/> */}
+														/> */}
 
-													{lecture.isPreviewFree ? (
-														<img
-															onClick={() =>
-																setPlayerData({
-																	videoId: lecture.lectureUrl.split("/").pop(),
-																})
-															}
-															className="w-4 h-4 mt-1 cursor-pointer"
-															src={assets.play_icon}
-															alt="play_icon"
-														/>
-													) : (
-														<img
-															className="w-4 h-4 mt-1"
-															src={assets.play_icon}
-															alt="play_icon"
-														/>
-													)}
+														{lecture.isPreviewFree ? (
+															<img
+																onClick={() =>
+																	setPlayerData({
+																		videoId: lecture.lectureUrl.split("/").pop(),
+																	})
+																}
+																className="w-4 h-4 mt-1 cursor-pointer"
+																src={assets.play_icon}
+																alt="play_icon"
+															/>
+														) : (
+															<img
+																className="w-4 h-4 mt-1"
+																src={assets.play_icon}
+																alt="play_icon"
+															/>
+														)}
 
-													<div className="flex items-center justify-between w-full text-gray-800 text-xs md:text-default">
-														<p>{lecture.lectureTitle}</p>
-														<div className="flex gap-2">
-															{lecture.isPreviewFree && (
-																<p
-																	onClick={() =>
-																		setPlayerData({
-																			videoId: lecture.lectureUrl
-																				.split("/")
-																				.pop(),
-																		})
-																	}
-																	className="text-blue-500 cursor-pointer"
-																>
-																	Preview
-																</p>
-															)}
-															<p>
-																{humanizeDuration(
-																	lecture.lectureDuration * 60 * 1000,
-																	{ units: ["h", "m"] }
+														<div className="flex items-center justify-between w-full text-gray-800 text-xs md:text-default">
+															<p>{lecture.lectureTitle}</p>
+															<div className="flex gap-2">
+																{lecture.isPreviewFree && (
+																	<p
+																		onClick={() =>
+																			setPlayerData({
+																				videoId: lecture.lectureUrl
+																					.split("/")
+																					.pop(),
+																			})
+																		}
+																		className="text-blue-500 cursor-pointer"
+																	>
+																		Preview
+																	</p>
 																)}
-															</p>
+																<p>
+																	{humanizeDuration(
+																		lecture.lectureDuration * 60 * 1000,
+																		{ units: ["h", "m"] }
+																	)}
+																</p>
+															</div>
 														</div>
-													</div>
-												</li>
-											))}
-										</ul>
+													</li>
+												))}
+											</ul>
+										</div>
 									</div>
-								</div>
-							))}
+								))
+							) : (
+								<p>No course content available</p>
+							)}
 						</div>
 					</div>
 
@@ -351,8 +435,6 @@ const CourseDetails = () => {
 
 			<Footer />
 		</>
-	) : (
-		<Loading />
 	);
 };
 
