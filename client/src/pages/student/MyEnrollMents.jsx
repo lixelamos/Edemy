@@ -4,9 +4,6 @@ import { Line } from "rc-progress";
 import Footer from "../../components/student/Footer";
 import { toast } from "react-toastify";
 import axios from "axios";
-import { data } from "react-router-dom";
-
-
 
 const MyEnrollments = () => {
 	const {
@@ -33,9 +30,7 @@ const MyEnrollments = () => {
 						{ courseId: course._id },
 						{ headers: { Authorization: `Bearer ${token}` } }
 					);
-					console.log("dta", data.progressData);
 					
-
 					let totalLectures = calculateNoOfLectures(course);
 
 					const lectureCompleted = data.progressData
